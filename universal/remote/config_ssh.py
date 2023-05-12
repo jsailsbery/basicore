@@ -1,7 +1,9 @@
 import os
 import configparser
 import logging
-from universal import ConfigReader
+from ..files import ConfigReader
+__all__ = ['SSHConfig']
+
 
 class SSHConfig:
     """

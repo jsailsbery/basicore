@@ -1,7 +1,8 @@
 import logging
 from typing import Optional, List
-from remote_command import RemoteCommand
-from config_ssh import SSHConfig
+from .remote_command import RemoteCommand
+from .config_ssh import SSHConfig
+__all__ = ['RemoteDirectory']
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
