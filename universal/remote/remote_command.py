@@ -88,6 +88,17 @@ class RemoteCommand:
             except socket.error as e:
                 return self._set_error(f"Socket error while waiting for command to finish: {str(e)}", ssh)
 
+        # double check for on a quick turn-around
+        if exit_status == -1:
+            try:
+                exit_status = stdout.channel.recv_exit_status()
+            except paramiko.SSHException as e:
+                return self._set_error(f"SSH error while waiting for command to finish: {str(e)}", ssh)
+            except socket.timeout:
+                return self._set_error(f"Socket timed out while waiting for command to finish.", ssh)
+            except socket.error as e:
+                return self._set_error(f"Socket error while waiting for command to finish: {str(e)}", ssh)
+
         # Check for specific errors from the command
         self.stdout = stdout.read().decode().strip()
         self.stderr = stderr.read().decode().strip()

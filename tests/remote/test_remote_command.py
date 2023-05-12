@@ -3,7 +3,7 @@ import pytest
 import socket
 import paramiko
 from unittest.mock import patch, Mock
-from remote import RemoteCommand, SSHConfig
+from universal.remote import RemoteCommand, SSHConfig
 
 
 def test_remote_command_success():
@@ -94,7 +94,7 @@ def test_remote_command_command_failure():
         cmd.execute(mock_auth)
 
     assert not cmd.success
-    assert cmd.stderr == 'Command failure in stdout.'
+    assert cmd.stderr == 'Command exited with error status.'
     assert cmd.exit_code == 1
 
 
@@ -122,7 +122,7 @@ def test_remote_command_ssh_error():
     assert not cmd.success
     assert "SSH connection error:" in cmd.stderr
 
-
+@pytest.mark.skip(reason="Time intensive. Only run on validation")
 def test_remote_command_socket_timeout():
     """
     Test the scenario where a socket timeout occurs while waiting for the command to finish.

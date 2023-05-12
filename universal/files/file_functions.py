@@ -9,7 +9,7 @@ from universal import strip_lines, rremove, first_word
 logger = logging.getLogger(__name__)
 lock = asyncio.Lock()
 
-class UFile:
+class FileActions:
     """
     A class containing file I/O utility functions.
 
@@ -21,7 +21,7 @@ class UFile:
 
     def __init__(self, filename: str, directory: str = "", overwrite: bool = False):
         """
-        Initializes a new instance of the UFile class.
+        Initializes a new instance of the FileActions class.
 
         Args:
             filename (str): The input file to read.
@@ -47,10 +47,10 @@ class UFile:
 
     def __str__(self) -> str:
         """
-        Returns a JSON string representation of the UFile object.
+        Returns a JSON string representation of the FileActions object.
 
         Returns:
-            str: The JSON string representation of the UFile object.
+            str: The JSON string representation of the FileActions object.
         """
         return json.dumps(self.__dict__)
 

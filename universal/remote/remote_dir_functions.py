@@ -1,14 +1,16 @@
+import os
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict
 from .remote_command import RemoteCommand
 from .config_ssh import SSHConfig
-__all__ = ['RemoteDirectory']
+from .remote_file_functions import RemoteFileActions
+__all__ = ['RemoteDirActions']
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class RemoteDirectory:
+class RemoteDirActions:
 
     @classmethod
     def exists(cls, directory: str, authentication: SSHConfig) -> bool:
@@ -45,7 +47,7 @@ class RemoteDirectory:
         Returns:
             bool: True if the operation is successful, False otherwise.
         """
-        if not RemoteDirectory.exists(directory=directory, authentication=authentication):
+        if not RemoteDirActions.exists(directory=directory, authentication=authentication):
 
             # Directory does not exist, create it
             create_directory_command = f'mkdir -p "{directory}"'
@@ -71,12 +73,35 @@ class RemoteDirectory:
         Returns:
             bool: True if the operation is successful, False otherwise.
         """
+        # ensure destination dir exists
+        RemoteDirActions.create(directory=destination_dir, authentication=authentication)
+
         copy_command = f'scp -r {source_dir}/* {destination_dir}'
         command = RemoteCommand(command=copy_command, command_id='copy_directory')
         if command.execute(authentication):
             logger.info(f"Contents copied from '{source_dir}' to '{destination_dir}'.")
             return True
         logger.info(f"Did not complete copy contents command: '{source_dir}' to '{destination_dir}'.")
+        return False
+
+    @classmethod
+    def delete(cls, directory: str, authentication: SSHConfig) -> bool:
+        """
+        Remove a directory and its contents on the remote server.
+
+        Args:
+            authentication (SSHConfig): The SSH configuration for connecting to the remote server.
+            directory (str): The path of the directory to remove.
+
+        Returns:
+            bool: True if the operation is successful, False otherwise.
+        """
+        remove_command = f'rm -rf {directory}'
+        command = RemoteCommand(command=remove_command, command_id='remove_directory')
+        if command.execute(authentication):
+            logger.info(f"Directory '{directory}' removed.")
+            return True
+        logger.info(f"Did not complete removing directory '{directory}'.")
         return False
 
     @classmethod
@@ -101,23 +126,67 @@ class RemoteDirectory:
         logger.info(f"Did not complete removing contents from '{directory}' except for specified values.")
         return False
 
+    # @classmethod
+    # def list_contents(cls, directory: str, authentication: SSHConfig) -> Optional[List[str]]:
+    #     """
+    #     Get the contents of a directory on the remote server.
+    #
+    #     Args:
+    #         authentication (SSHConfig): The SSH configuration for connecting to the remote server.
+    #         directory (str): The path of the directory to get contents from.
+    #
+    #     Returns:
+    #         Optional[List[str]]: A list of items in the directory if the operation is successful, None otherwise.
+    #     """
+    #     get_command = f'ls {directory}'
+    #     command = RemoteCommand(command=get_command, command_id='get_directory_contents')
+    #     if command.execute(authentication):
+    #         contents = command.stdout.strip().split('\n')
+    #         logger.info(f"Contents of '{directory}':\n" + '\n'.join(contents))
+    #         return contents
+    #     logger.info(f"Could not list contents of '{directory}' ")
+    #     return None
+
     @classmethod
-    def list_contents(cls, directory: str, authentication: SSHConfig) -> Optional[List[str]]:
+    def list_contents(cls, directory: str, authentication: SSHConfig) -> Optional[Dict[str, int]]:
         """
-        Get the contents of a directory on the remote server.
+        Get the contents of a directory on the remote server, excluding broken symbolic links.
+        If the content is a valid symbolic link, it returns the path that the symbolic link points to.
 
         Args:
             authentication (SSHConfig): The SSH configuration for connecting to the remote server.
             directory (str): The path of the directory to get contents from.
 
         Returns:
-            Optional[List[str]]: A list of items in the directory if the operation is successful, None otherwise.
+            Optional[Dict[str, int]]: A dictionary where keys are the absolute paths of the contents of the directory
+            and values are their corresponding file sizes, if the operation is successful, None otherwise.
         """
-        get_command = f'ls {directory}'
+        get_command = f'ls -l {directory}'
         command = RemoteCommand(command=get_command, command_id='get_directory_contents')
         if command.execute(authentication):
             contents = command.stdout.strip().split('\n')
-            logger.info(f"Contents of '{directory}':\n" + '\n'.join(contents))
-            return contents
+            directory_contents = {}
+
+            for item in contents:
+                item_info = item.split()
+                if len(item_info) < 9:
+                    continue
+
+                # Check if it is a symbolic link
+                if item_info[0].startswith('l'):
+                    symlink_target_path = item_info[-1]
+                    size = RemoteFileActions.follow_symlink(symlink_target_path, authentication)
+                    if size is not None:
+                        directory_contents[symlink_target_path] = size
+
+                else:  # Regular file or directory
+                    size = int(item_info[4])
+                    full_path = os.path.join(directory, item_info[-1])
+                    directory_contents[full_path] = size
+
+            logger.info(f"Contents of '{directory}':\n" + '\n'.join(f'{k}: {v}' for k, v in directory_contents.items()))
+            return directory_contents
+
         logger.info(f"Could not list contents of '{directory}' ")
         return None
+

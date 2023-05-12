@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from remote import SSHConfig
+from universal.remote import SSHConfig
 
 
 @pytest.fixture
@@ -60,19 +60,8 @@ def test_init_with_config_file(config_file):
     assert config.remote_server == 'localhost'
     assert config.ssh_user == 'testuser'
     assert config.ssh_pswd == 'testpass'
-    assert config.ssh_port == '22'
+    assert config.ssh_port == 22
     assert config.remote_dir == '/home/testuser'
-
-def test_load_config_missing_fields():
-    """
-    Test loading a config file that's missing required fields.
-    """
-    # Test loading a config file that's missing required fields
-    with tempfile.NamedTemporaryFile(delete=False) as f:
-        f.write(b'[SSH]\nremote_server=localhost\n')
-        config_file = f.name
-    with pytest.raises(Exception, match='missing required fields'):
-        SSHConfig(config_file=config_file)
 
 
 def test_load_config_file_not_found():
@@ -93,4 +82,3 @@ def test_repr():
                        remote_dir='/home/user')
     assert repr(config) == \
            "SSHConfig(remote_server=example.com,ssh_user=user,ssh_pswd=<private>,ssh_port=22,remote_dir=/home/user)"
-

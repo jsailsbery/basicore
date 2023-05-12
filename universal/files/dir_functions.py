@@ -10,7 +10,28 @@ logger = logging.getLogger(__name__)
 class DirActions:
 
     @classmethod
-    def purge(cls, directory: str, directories_to_keep: List[str]) -> bool:
+    def copy_all(cls, directory: str, destination: str) -> bool:
+        """
+        This class method copies all contents of one directory to another.
+        In case of a failure, an error is logged and the method returns False.
+        On successful copying, the method returns True.
+
+        Parameters:
+        directory (str): The source directory from which files are to be copied.
+        destination (str): The destination directory where files are to be copied.
+
+        Returns:
+        bool: True if successful, False otherwise.
+        """
+        try:
+            shutil.copytree(directory, destination)
+        except shutil.Error as e:
+            logger.error(f"Failed to copy {directory} to {destination}: {e}")
+            return False
+        return True
+
+    @classmethod
+    def remove_contents(cls, directory: str, directories_to_keep: List[str]) -> bool:
         """Remove all directories and files except for a list of directories specified.
 
         Args:
@@ -36,28 +57,7 @@ class DirActions:
         return True
 
     @classmethod
-    def copy_all(cls, directory: str, destination: str) -> bool:
-        """
-        This class method copies all contents of one directory to another.
-        In case of a failure, an error is logged and the method returns False.
-        On successful copying, the method returns True.
-
-        Parameters:
-        directory (str): The source directory from which files are to be copied.
-        destination (str): The destination directory where files are to be copied.
-
-        Returns:
-        bool: True if successful, False otherwise.
-        """
-        try:
-            shutil.copytree(directory, destination)
-        except shutil.Error as e:
-            logger.error(f"Failed to copy {directory} to {destination}: {e}")
-            return False
-        return True
-
-    @classmethod
-    def get_contents(cls, dir_path: str) -> Dict[str, int]:
+    def list_contents(cls, dir_path: str) -> Dict[str, int]:
         """
         This function returns a dictionary of absolute paths and their corresponding file sizes of the contents of a directory,
         excluding broken symbolic links. If the content is a valid symbolic link,

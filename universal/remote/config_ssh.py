@@ -42,10 +42,10 @@ class SSHConfig:
             str: A string representation of the SSHConfig instance.
         """
         retstr = "SSHConfig("
-        retstr += f"remote_server={self.remote_server}" if hasattr(self, 'remote_server') else ""
-        retstr += f"ssh_user={self.ssh_user}" if hasattr(self, 'ssh_user') else ""
-        retstr += f"ssh_pswd=<private>" if hasattr(self, 'ssh_pswd') else ""
-        retstr += f"ssh_port={self.ssh_port}" if hasattr(self, 'ssh_port') else ""
+        retstr += f"remote_server={self.remote_server}," if hasattr(self, 'remote_server') else ""
+        retstr += f"ssh_user={self.ssh_user}," if hasattr(self, 'ssh_user') else ""
+        retstr += f"ssh_pswd=<private>," if hasattr(self, 'ssh_pswd') else ""
+        retstr += f"ssh_port={self.ssh_port}," if hasattr(self, 'ssh_port') else ""
         retstr += f"remote_dir={self.remote_dir}" if hasattr(self, 'remote_dir') else ""
         retstr += ")"
         return retstr

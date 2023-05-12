@@ -47,6 +47,11 @@ class ConfigReader:
         dict
             a dictionary that contains the configuration data
         """
+        # Open the file and print its contents
+        lines = ""
+        with open(self.filepath, 'r') as f:
+            lines = f.read()
+
 
         config = configparser.ConfigParser()
         config_dict = {}
