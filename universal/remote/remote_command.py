@@ -3,7 +3,7 @@ import socket
 import logging
 import paramiko
 from dataclasses import dataclass
-from .config_ssh import SSHConfig
+from universal.parameters.config_ssh import SSHConfig
 __all__ = ['RemoteCommand']
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')

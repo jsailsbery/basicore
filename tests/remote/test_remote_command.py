@@ -3,7 +3,8 @@ import pytest
 import socket
 import paramiko
 from unittest.mock import patch, Mock
-from universal.remote import RemoteCommand, SSHConfig
+from universal.parameters import SSHConfig
+from universal.remote import RemoteCommand
 
 
 def test_remote_command_success():
