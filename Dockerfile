@@ -15,10 +15,10 @@ RUN apt-get install -y vim openssh-server
 RUN apt-get clean all && \
     rm -rf /var/lib/apt/lists*
 
-# Set the working directory in the container
+# Set the working source_dir in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
+# Copy the current source_dir contents into the container at /app
 COPY . /app
 
 # Install any needed packages specified in requirements.txt
