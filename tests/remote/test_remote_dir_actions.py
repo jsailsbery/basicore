@@ -1,8 +1,8 @@
 import os
-import pytest
 import tempfile
-from unittest.mock import patch, Mock, PropertyMock
-from universal.remote import RemoteDirActions, SSHConfig
+from unittest.mock import patch, PropertyMock
+from universal.remote import RemoteDirActions
+from universal.parameters import SSHConfig
 
 def test_exists():
     """Test RemoteDirActions.exists method"""
@@ -28,33 +28,14 @@ def test_create():
                 result = RemoteDirActions.create(temp_dir, SSHConfig())
                 assert result == True
 
-def test_copy():
-    """Test RemoteDirActions.copy method"""
-    source_dir = tempfile.mkdtemp()
-    destination_dir = tempfile.mkdtemp()
-    with patch('universal.remote.RemoteCommand.execute', return_value=True):
-        assert RemoteDirActions.copy_contents(source_dir, destination_dir, SSHConfig()) == True
-    os.rmdir(source_dir)
-    os.rmdir(destination_dir)
-
-def test_remove_contents():
+def test_delete():
     """Test RemoteDirActions.remove_contents method"""
     temp_dir = tempfile.mkdtemp()
     with patch('universal.remote.RemoteCommand.execute', return_value=True):
-        assert RemoteDirActions.remove_contents(temp_dir, SSHConfig()) == True
+        assert RemoteDirActions.remove(temp_dir, SSHConfig()) == True
     os.rmdir(temp_dir)
 
-# def test_list_contents():
-#     """Test RemoteDirActions.list_contents method"""
-#     temp_dir = tempfile.mkdtemp()
-#     with patch('universal.remote.RemoteCommand.execute') as mock_execute:
-#         mock_execute.return_value = True
-#         with patch('universal.remote.RemoteCommand.stdout', new_callable=PropertyMock) as mock_stdout:
-#             mock_stdout.return_value = 'file1\nfile2\n'
-#             assert RemoteDirActions.list_contents(temp_dir, SSHConfig()) == ['file1', 'file2']
-#     os.rmdir(temp_dir)
-
-def test_list_contents():
+def test_list():
     """Test RemoteDirActions.list_contents method"""
     temp_dir = tempfile.mkdtemp()
 
@@ -72,11 +53,20 @@ def test_list_contents():
             'target': 1024,
         }
 
-        assert RemoteDirActions.list_contents(temp_dir, SSHConfig()) == expected_result
+        assert RemoteDirActions.list(temp_dir, SSHConfig()) == expected_result
 
     os.rmdir(temp_dir)
 
-def test_remove_directory():
+def test_copy():
+    """Test RemoteDirActions.copy method"""
+    source_dir = tempfile.mkdtemp()
+    destination_dir = tempfile.mkdtemp()
+    with patch('universal.remote.RemoteCommand.execute', return_value=True):
+        assert RemoteDirActions.copy(source_dir, destination_dir, SSHConfig()) == True
+    os.rmdir(source_dir)
+    os.rmdir(destination_dir)
+
+def test_remove():
     """Test RemoteDirActions.remove_directory method"""
     temp_dir = tempfile.mkdtemp()
     with patch('universal.remote.RemoteCommand.execute') as mock_execute:
