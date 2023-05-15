@@ -33,7 +33,7 @@ def test_copy():
     source_dir = tempfile.mkdtemp()
     destination_dir = tempfile.mkdtemp()
     with patch('universal.remote.RemoteCommand.execute', return_value=True):
-        assert RemoteDirActions.copy(source_dir, destination_dir, SSHConfig()) == True
+        assert RemoteDirActions.copy_contents(source_dir, destination_dir, SSHConfig()) == True
     os.rmdir(source_dir)
     os.rmdir(destination_dir)
 

@@ -69,7 +69,7 @@ def test_load_config_file_not_found():
     Test loading a config file that can't be found.
     """
     # Test loading a config file that can't be found
-    with pytest.raises(Exception, match='No such file or directory'):
+    with pytest.raises(Exception, match='No such file or source_dir'):
         SSHConfig(config_file='/does/not/exist')
 
 
