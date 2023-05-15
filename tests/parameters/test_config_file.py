@@ -1,7 +1,6 @@
 import os
 import tempfile
-import pytest
-from universal.files import ConfigReader
+from universal.parameters import ConfigReader
 
 
 def test_load_config():

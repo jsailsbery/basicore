@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from universal.remote import SSHConfig
+from universal.parameters import SSHConfig
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_load_config_file_not_found():
     Test loading a config file that can't be found.
     """
     # Test loading a config file that can't be found
-    with pytest.raises(Exception, match='No such file or source_dir'):
+    with pytest.raises(Exception, match=r'No such file or directory'):
         SSHConfig(config_file='/does/not/exist')
 
 

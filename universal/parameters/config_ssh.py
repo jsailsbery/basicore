@@ -1,7 +1,7 @@
 import os
 import configparser
 import logging
-from ..files import ConfigReader
+from universal.parameters import ConfigReader
 __all__ = ['SSHConfig']
 
 
@@ -20,7 +20,7 @@ class SSHConfig:
             ssh_user (str, optional): The SSH username. Defaults to None.
             ssh_pswd (str, optional): The SSH password. Defaults to None.
             ssh_port (str): The SSH port.
-            remote_dir (str, optional): The path to the SSH directory. Defaults to None.
+            remote_dir (str, optional): The path to the SSH source_dir. Defaults to None.
             config_file (str, optional): The path to the configuration file. Defaults to None.
         """
         # Set default values from environment variables
@@ -52,7 +52,7 @@ class SSHConfig:
 
     def load_config(self, config_file: str) -> None:
         """
-        Loads the directory mapping information from a configuration file.
+        Loads the source_dir mapping information from a configuration file.
 
         Args:
             config_file (str): The path to the configuration file.
