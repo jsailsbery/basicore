@@ -18,10 +18,10 @@ class USession:
 
     def __init__(self, session_directory: str = "") -> None:
         """
-        Initializes a new USession object with the specified directory.
+        Initializes a new USession object with the specified source_dir.
 
         Parameters:
-            session_directory (str): The directory to use for storing session files.
+            session_directory (str): The source_dir to use for storing session files.
 
         Returns:
             None
