@@ -1,7 +1,7 @@
 import os
 import tempfile
 from unittest import mock
-from universal.files import FileActions
+from basicore.files import FileActions
 
 
 def test_exists():

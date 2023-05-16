@@ -1,6 +1,6 @@
 import os
 import tempfile
-from universal.files import DirActions
+from basicore.files import DirActions
 
 def test_exists():
     with tempfile.TemporaryDirectory() as temp_dir:

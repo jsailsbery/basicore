@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from universal.parameters import SSHConfig
+from basicore.parameters import SSHConfig
 
 
 @pytest.fixture

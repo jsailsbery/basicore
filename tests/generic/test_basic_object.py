@@ -1,5 +1,5 @@
 import logging
-from universal.generic import Basic
+from basicore.generic import Basic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -2,8 +2,8 @@ import os
 import pytest
 import tempfile
 from unittest.mock import patch, Mock, PropertyMock, MagicMock
-from universal.parameters import SSHConfig
-from universal.remote import RemoteCommand, RemoteExecuteException, RemoteFileActions
+from basicore.parameters import SSHConfig
+from basicore.remote import RemoteCommand, RemoteExecuteException, RemoteFileActions
 
 
 def test_exists():

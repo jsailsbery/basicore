@@ -2,8 +2,8 @@ import os
 import pytest
 import tempfile
 from unittest.mock import patch, PropertyMock
-from universal.remote import RemoteDirActions, RemoteCommand, RemoteExecuteException
-from universal.parameters import SSHConfig
+from basicore.remote import RemoteDirActions, RemoteCommand, RemoteExecuteException
+from basicore.parameters import SSHConfig
 
 def test_exists():
     """Test RemoteDirActions.exists method"""

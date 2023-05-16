@@ -5,8 +5,8 @@ import tempfile
 from typing import Union
 
 from .remote_command import RemoteCommand, RemoteExecuteException
-from universal.parameters import SSHConfig
-from universal.generic import Basic
+from basicore.parameters import SSHConfig
+from basicore.generic import Basic
 
 __all__ = ['RemoteFileActions']
 logging.basicConfig(level=logging.INFO, format='%(message)s')

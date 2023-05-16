@@ -3,7 +3,7 @@ import stat
 import json
 import tempfile
 from unittest.mock import patch
-from universal.files import FileNode
+from basicore.files import FileNode
 
 
 def test_read():

@@ -1,7 +1,7 @@
 import os
 import tempfile
 from unittest.mock import patch
-from universal.files import Filenames
+from basicore.files import Filenames
 
 
 def test_append():

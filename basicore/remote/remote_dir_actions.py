@@ -2,8 +2,8 @@ import os
 import logging
 from typing import Optional, Dict
 from .remote_command import RemoteCommand
-from universal.parameters.config_ssh import SSHConfig
-from universal.generic import Basic
+from basicore.parameters.config_ssh import SSHConfig
+from basicore.generic import Basic
 from .remote_file_actions import RemoteFileActions, RemoteExecuteException
 
 __all__ = ['RemoteDirActions']

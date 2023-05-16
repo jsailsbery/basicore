@@ -2,7 +2,7 @@ import os
 import time
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
-from universal.files import INode
+from basicore.files import INode
 
 # PyTest test cases
 def test_inode_creation():

@@ -1,6 +1,6 @@
 import os
 import tempfile
-from universal.parameters import ConfigReader
+from basicore.parameters import ConfigReader
 
 
 def test_load_config():

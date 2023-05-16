@@ -3,8 +3,8 @@ import random
 import logging
 from typing import List
 
-from universal.file_functions import UFile
-from universal.task_functions import UTask
+from basicore.file_functions import UFile
+from basicore.task_functions import UTask
 
 logger = logging.getLogger(__name__)
 

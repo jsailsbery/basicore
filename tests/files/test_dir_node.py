@@ -1,8 +1,8 @@
 import os
 import pytest
 import tempfile
-from universal.files import DirNode
-from universal.files import FileNode
+from basicore.files import DirNode
+from basicore.files import FileNode
 
 def test_create():
     with tempfile.TemporaryDirectory() as temp_dir:

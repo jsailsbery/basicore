@@ -3,7 +3,7 @@ import time
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from universal.generic import Basic
+from basicore.generic import Basic
 logger = logging.getLogger(__name__)
 
 

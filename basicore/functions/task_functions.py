@@ -1,7 +1,7 @@
 import json
 import aiohttp
 import logging
-from universal import UFile
+from basicore import UFile
 
 logger = logging.getLogger(__name__)
 

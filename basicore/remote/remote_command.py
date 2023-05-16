@@ -4,7 +4,7 @@ import logging
 import paramiko
 from scp import SCPClient
 from dataclasses import dataclass
-from universal.parameters.config_ssh import SSHConfig
+from basicore.parameters.config_ssh import SSHConfig
 
 __all__ = ['RemoteCommand', 'RemoteResults', 'RemoteExecuteException']
 logging.basicConfig(level=logging.INFO, format='%(message)s')

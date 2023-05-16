@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from universal.tools import Grep
+from basicore.tools import Grep
 
 @pytest.fixture(scope='module')
 def test_files():
