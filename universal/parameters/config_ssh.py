@@ -1,8 +1,11 @@
 import os
 import configparser
 import logging
-from universal.parameters import ConfigReader
+from .config_file import ConfigReader
+
 __all__ = ['SSHConfig']
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
 
 
 class SSHConfig:
