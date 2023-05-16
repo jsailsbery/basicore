@@ -20,6 +20,18 @@ class DirActions:
         return os.path.exists(directory)
 
     @classmethod
+    def isdir(cls, directory: str) -> bool:
+        """Check if a directory path.
+
+        Args:
+            directory (str): The directory to check.
+
+        Returns:
+            bool: True if the directory exists, False otherwise.
+        """
+        return os.path.isdir(directory)
+
+    @classmethod
     def create(cls, directory: str) -> bool:
         """Create a directory.
 

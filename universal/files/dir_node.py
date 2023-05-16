@@ -28,7 +28,6 @@ class DirNode(INode):
     def __repr__(self):
         return f"DirInfo({self.path})"
 
-
     def create(self, mode: int = 0o777, exist_ok: bool = False) -> bool:
         """
         Create directories recursively.
@@ -46,7 +45,7 @@ class DirNode(INode):
         try:
             os.makedirs(self.path, mode=mode, exist_ok=exist_ok)
             self._update_attributes()
-            return self._bool_pass(f"Successfully created dir: {self.path}")
+            return self._bpass(f"Successfully created dir: {self.path}")
         except Exception as e:
             logger.error(f"Failed to create dir path: {self.path}. Error: {str(e)}")
             return False
@@ -61,7 +60,7 @@ class DirNode(INode):
         try:
             shutil.rmtree(self.path)
             self._update_attributes()
-            return self._bool_pass(f"Successfully deleted dir: {self.path}")
+            return self._bpass(f"Successfully deleted dir: {self.path}")
         except Exception as e:
             logger.error(f"Failed to delete directory {self.path}. Reason: {str(e)}")
             return False

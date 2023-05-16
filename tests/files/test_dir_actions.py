@@ -7,6 +7,7 @@ def test_exists():
         assert DirActions.exists(temp_dir)
         assert not DirActions.exists(os.path.join(temp_dir, "non_existent"))
 
+
 def test_create_delete():
     with tempfile.TemporaryDirectory() as temp_dir:
         new_dir = os.path.join(temp_dir, "new_dir")

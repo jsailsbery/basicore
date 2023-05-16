@@ -22,6 +22,18 @@ class FileActions:
         return os.path.exists(filepath)
 
     @classmethod
+    def isfile(cls, directory: str) -> bool:
+        """Check if a directory path.
+
+        Args:
+            directory (str): The directory to check.
+
+        Returns:
+            bool: True if the directory exists, False otherwise.
+        """
+        return os.path.isfile(directory)
+
+    @classmethod
     def remove(cls, filepath: str) -> None:
         """
         Removes the file at the specified filepath if it exists.
@@ -93,7 +105,7 @@ class FileActions:
         return True
 
     @classmethod
-    def follow_symlink(cls, symlink_path: str) -> str:
+    def follow(cls, symlink_path: str) -> str:
         """
         Returns the absolute path of the target of a symbolic link.
 

@@ -60,7 +60,7 @@ def test_follow_symlink():
 
         os.symlink(target_filepath, symlink_filepath)
 
-        result = FileActions.follow_symlink(symlink_filepath)
+        result = FileActions.follow(symlink_filepath)
         assert result == os.path.abspath(target_filepath)
 
 
@@ -70,7 +70,7 @@ def test_follow_symlink_nonexistent_symlink():
 
         with mock.patch('os.path.exists', return_value=False):
             try:
-                FileActions.follow_symlink(symlink_filepath)
+                FileActions.follow(symlink_filepath)
             except FileNotFoundError as e:
                 assert str(e) == f"Symlink does not exist: {symlink_filepath}"
 
@@ -81,7 +81,7 @@ def test_follow_symlink_not_symlink():
 
         with mock.patch('os.path.islink', return_value=False):
             try:
-                FileActions.follow_symlink(filepath)
+                FileActions.follow(filepath)
             except ValueError as e:
                 assert str(e) == f"The provided path {filepath} is not a symlink."
 
@@ -95,7 +95,7 @@ def test_follow_symlink_broken_symlink():
         os.symlink('/path/to/nonexistent/file.txt', symlink_filepath)
 
         with mock.patch('os.path.exists', return_value=True):
-            result = FileActions.follow_symlink(symlink_filepath)
+            result = FileActions.follow(symlink_filepath)
             assert result == ''
 
 
@@ -108,5 +108,5 @@ def test_follow_symlink_broken_symlink():
         os.symlink('/path/to/nonexistent/file.txt', symlink_filepath)
 
         with mock.patch('os.path.exists', return_value=True):
-            result = FileActions.follow_symlink(symlink_filepath)
+            result = FileActions.follow(symlink_filepath)
             assert result == '/path/to/nonexistent/file.txt'

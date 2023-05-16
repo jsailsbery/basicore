@@ -27,16 +27,17 @@ class RemoteFileActions:
         Returns:
             bool: True if the file exists, False otherwise.
         """
-        remote_command = f'if [ -e "{filepath}" ]; then exit 0; else exit 1; fi'
-        remote_results = RemoteCommand.execute(command=remote_command, command_id='check_file_command',
-                                               authentication=authentication)
-        if remote_results.completion:
-            if remote_results.success:
+        command = f'if [ -e "{filepath}" ]; then exit 0; else exit 1; fi'
+        results = RemoteCommand.execute(command=command, command_id='file_exists', authentication=authentication)
+        if results.completion:
+            if results.success:
                 return Basic.bpass(f"File '{filepath}' exists.")
+            elif results.errors:
+                raise RemoteExecuteException(f"File '{filepath}' existence could not be verified. {results}")
             else:
                 return Basic.bfail(f"File '{filepath}' does not exist.")
         else:
-            raise RemoteExecuteException(f"Error executing remote command: '{remote_command}'")
+            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
 
     @classmethod
     def isfile(cls, filepath: str, authentication: SSHConfig) -> bool:
@@ -50,15 +51,20 @@ class RemoteFileActions:
         Returns:
             bool: True if the file exists, False otherwise.
         """
-        remote_command = f'if [ -f "{filepath}" ]; then exit 0; else exit 1; fi'
-        command = RemoteCommand(command=remote_command, command_id='check_file_command')
-        if command.execute(authentication):
-            if command.exit_code == 0:
+        if not RemoteFileActions.exists(filepath=filepath, authentication=authentication):
+            return False
+
+        command = f'if [ -f "{filepath}" ]; then exit 0; else exit 1; fi'
+        results = RemoteCommand.execute(command=command, command_id='isfile', authentication=authentication)
+        if results.completion:
+            if results.success:
                 return Basic.bpass(f"File '{filepath}' is a file.")
+            elif results.errors:
+                raise RemoteExecuteException(f"File '{filepath}' type could not be verified. {results}")
             else:
                 return Basic.bfail(f"File '{filepath}' is not a file.")
         else:
-            raise RemoteExecuteException(f"Error executing remote command: '{remote_command}'")
+            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
 
     @classmethod
     def remove(cls, filepath: str, authentication: SSHConfig) -> bool:
@@ -72,15 +78,20 @@ class RemoteFileActions:
         Returns:
             None
         """
-        remote_command = f'rm -f {filepath}'
-        command = RemoteCommand(command=remote_command, command_id='remove_file')
-        if command.execute(authentication):
-            if command.exit_code == 0:
+        if not RemoteFileActions.exists(filepath=filepath, authentication=authentication):
+            return True
+
+        command = f'rm -f {filepath}'
+        results = RemoteCommand.execute(command=command, command_id='remove_file', authentication=authentication)
+        if results.completion:
+            if results.success:
                 return Basic.bpass(f"File '{filepath}' removed.")
+            elif results.errors:
+                raise RemoteExecuteException(f"File '{filepath}' removal not confirmed. Errors in execution. {results}")
             else:
-                return Basic.bfail(f"Did not complete removing source_dir '{filepath}'.")
+                return Basic.bfail(f"Did not complete removing file '{filepath}'.")
         else:
-            raise RemoteExecuteException(f"Error executing remote command: '{remote_command}'")
+            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
 
     @classmethod
     def read(cls, filepath: str, authentication: SSHConfig) -> Union[str, list, dict]:
@@ -96,11 +107,14 @@ class RemoteFileActions:
         Raises:
             IOError: If an error occurs while reading the file.
         """
-        remote_command = f'cat {filepath}'
-        command = RemoteCommand(command=remote_command, command_id='read_file')
-        if command.execute(authentication):
-            if command.exit_code == 0:
-                content = command.stdout
+        if not RemoteFileActions.exists(filepath=filepath, authentication=authentication):
+            return ""
+
+        command = f'cat {filepath}'
+        results = RemoteCommand.execute(command=command, command_id='read_file', authentication=authentication)
+        if results.completion:
+            if results.success:
+                content = results.stdout
                 try:
                     return json.loads(content)  # Try parsing as JSON dict or list
                 except json.JSONDecodeError:
@@ -108,7 +122,7 @@ class RemoteFileActions:
             else:
                 return Basic.sfail(f"Failed to read {filepath}.")
         else:
-            raise RemoteExecuteException(f"Error executing remote command: '{remote_command}'")
+            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
 
     @classmethod
     def write(cls, filepath: str, data: Union[str, list, dict], authentication: SSHConfig, mode: str = "w") -> bool:
@@ -117,7 +131,8 @@ class RemoteFileActions:
 
         Parameters:
             filepath (str): The path of the file to write on the remote system.
-            data (Union[str, list, dict]): The data to write to the file. If it's a list or dict, it will be converted to a string using JSON.
+            data (Union[str, list, dict]): The data to write to the file. If it's a list or dict, it will be converted
+            to a string using JSON.
             authentication (SSHConfig): The authentication configuration for the remote system.
             mode (str): The file mode to be used for writing. Default is "w" (write). "a" for append.
 
@@ -126,6 +141,9 @@ class RemoteFileActions:
         Raises:
             RemoteExecuteException: If an error occurs while executing the remote command.
         """
+        if mode != "w":
+            raise RemoteExecuteException("Only write mode is supported at this time.")
+
         try:
             if isinstance(data, (list, dict)):
                 data = json.dumps(data)
@@ -136,8 +154,8 @@ class RemoteFileActions:
                 tmp_file = tmp.name
 
             # Use scp to copy the file to the remote system
-            command = RemoteCommand(command="", command_id='write_file')
-            if command.scp(tmp_file, filepath, authentication):
+            command = RemoteCommand.scp(source=tmp_file, destination=filepath, authentication=authentication)
+            if command.completion:
                 if command.success:
                     return Basic.bpass(f"Data written to remote file '{filepath}'.")
                 else:
@@ -161,12 +179,17 @@ class RemoteFileActions:
         Returns:
             int: The size of the path if it exists, -1 otherwise.
         """
-        remote_command = f'if [ -e "{symlink_target_path}" ]; then readlink -f "{symlink_target_path}"; fi'
-        command = RemoteCommand(command=remote_command, command_id='follow_link_command')
-        if command.execute(authentication):
-            if command.exit_code == 0:
-                return Basic.spass(command.stdout, f"Symlink: '{symlink_target_path}' target: {command.stdout}.")
+        if not RemoteFileActions.exists(filepath=symlink_target_path, authentication=authentication):
+            return ""
+
+        command = f'readlink -f "{symlink_target_path}"'
+        results = RemoteCommand.execute(command=command, command_id='follow_symlink', authentication=authentication)
+        if results.completion:
+            if results.success:
+                return Basic.spass(results.stdout.strip(), f"Symlink: '{symlink_target_path}' target: {results.stdout}.")
+            elif results.errors:
+                raise RemoteExecuteException(f"Errors occurred trying to follow symlink file {results}")
             else:
                 return Basic.sfail(f"Could not follow symlink file: '{symlink_target_path}'.")
         else:
-            raise RemoteExecuteException(f"Error executing remote command: '{remote_command}'")
+            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
