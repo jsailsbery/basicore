@@ -2,7 +2,7 @@ import os
 import pytest
 import tempfile
 from unittest.mock import patch, PropertyMock
-from basicore.remote import RemoteDirActions, RemoteCommand, RemoteExecuteException
+from basicore.remote import RemoteDirActions, RemoteExecuteException
 from basicore.parameters import SSHConfig
 
 def test_exists():
