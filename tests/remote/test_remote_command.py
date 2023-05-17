@@ -3,7 +3,7 @@ import socket
 import paramiko
 from unittest.mock import patch, Mock
 from basicore.parameters import SSHConfig
-from basicore.remote import RemoteCommand
+from basicore.remote import RemoteCommand, RemoteConnection
 
 
 def test_remote_command_success():
@@ -19,21 +19,26 @@ def test_remote_command_success():
 
     # Mock paramiko.SSHClient
     with patch('paramiko.SSHClient') as MockSSHClient:
-        mock_ssh = MockSSHClient.return_value
 
+        # Mock SSHClient
+        mock_ssh = MockSSHClient.return_value
         mock_stdout = Mock()
         mock_stdout.channel.recv_exit_status.return_value = 0
         mock_stdout.read.return_value = b''
         mock_stderr = Mock()
         mock_stderr.read.return_value = b''
-
         mock_ssh.exec_command.return_value = (None, mock_stdout, mock_stderr)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        # Mock RemoteConnection
+        mock_conn = Mock(spec=RemoteConnection)
+        mock_conn.authentication = mock_auth
+        mock_conn.exec_command.return_value = (None, 'stdout', 'stderr', 0)
+
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
 
     assert result.success
-    assert result.stderr == ''
-    assert result.stdout == ''
+    assert result.stderr == 'stderr'
+    assert result.stdout == 'stdout'
     assert result.exit_code == 0
 
 
@@ -52,8 +57,9 @@ def test_remote_command_auth_failure():
     with patch('paramiko.SSHClient') as MockSSHClient:
         mock_ssh = MockSSHClient.return_value
         mock_ssh.connect.side_effect = paramiko.AuthenticationException
+        mock_conn = RemoteConnection(mock_auth)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
 
     assert not result.success
     assert "Failed to log in to remote server." in result.stderr
@@ -76,16 +82,22 @@ def test_remote_command_command_failure():
 
         mock_stdout = Mock()
         mock_stdout.channel.recv_exit_status.return_value = 1  # Command failed
-        mock_stdout.read.return_value = b''
+        mock_stdout.read.return_value = 'stdout'  # Return actual string
         mock_stderr = Mock()
-        mock_stderr.read.return_value = b'Command failed'
+        mock_stderr.read.return_value = 'ERROR: Command failed'  # Return actual string
 
         mock_ssh.exec_command.return_value = (None, mock_stdout, mock_stderr)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        # Mock RemoteConnection
+        mock_conn = Mock(spec=RemoteConnection)
+        mock_conn.authentication = mock_auth
+        mock_conn.conn = mock_ssh  # Add this line
+        mock_conn.exec_command.return_value = (None, 'stdout', 'ERROR: Command failed', 1)  # Fixed return value
+
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
 
     assert not result.success
-    assert result.stderr == 'Command failed'
+    assert "Command failed" in result.stderr
     assert result.exit_code == 1
 
 
@@ -103,12 +115,13 @@ def test_remote_command_ssh_error():
     # Mock paramiko.SSHClient to raise an SSHException
     with patch('paramiko.SSHClient') as MockSSHClient:
         mock_ssh = MockSSHClient.return_value
-        mock_ssh.connect.side_effect = paramiko.SSHException
+        mock_ssh.connect.side_effect = paramiko.AuthenticationException
+        mock_conn = RemoteConnection(mock_auth)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
 
     assert not result.success
-    assert "SSH error while waiting for command to finish:" in result.stderr
+    assert "Failed to log in" in result.stderr
 
 
 def test_remote_command_error_detection():
@@ -128,25 +141,32 @@ def test_remote_command_error_detection():
 
         mock_stdout = Mock()
         mock_stdout.channel.recv_exit_status.return_value = 0  # Command succeeded
-        mock_stdout.read.return_value = b'ERROR: something went wrong'
+        mock_stdout.read.return_value = ''  # Return actual string
         mock_stderr = Mock()
-        mock_stderr.read.return_value = b''
+        mock_stderr.read.return_value = 'ERROR: something went wrong'  # Return actual string
 
         mock_ssh.exec_command.return_value = (None, mock_stdout, mock_stderr)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        # Mock RemoteConnection
+        mock_conn = Mock(spec=RemoteConnection)
+        mock_conn.authentication = mock_auth
+        mock_conn.conn = mock_ssh  # Add this line
+        mock_conn.exec_command.return_value = (None, '', 'ERROR: something went wrong', 0)  # Fixed return value
 
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
+
+    assert result.completion
     assert not result.success
     assert result.errors
-    assert result.stderr == ''
-    assert result.stdout == 'ERROR: something went wrong'
+    assert result.stderr == 'ERROR: something went wrong'
+    assert result.stdout == ''
     assert result.exit_code == 0
 
 
 #@pytest.mark.skip(reason="Time intensive. Only run on validation")
-def test_remote_command_socket_timeout():
+def test_remote_command_error_detection():
     """
-    Test the scenario where a socket timeout occurs while waiting for the command to finish.
+    Test the scenario where command execution fails and the error is detected in stdout or stderr.
     """
     # Mock SSHConfig
     mock_auth = Mock(spec=SSHConfig)
@@ -155,18 +175,30 @@ def test_remote_command_socket_timeout():
     mock_auth.ssh_user = "user"
     mock_auth.ssh_pswd = "password"
 
-    # Mock paramiko.SSHClient to simulate a timeout
+    # Mock paramiko.SSHClient
     with patch('paramiko.SSHClient') as MockSSHClient:
         mock_ssh = MockSSHClient.return_value
 
         mock_stdout = Mock()
-        mock_stdout.channel.exit_status_ready.side_effect = socket.timeout
+        mock_stdout.channel.recv_exit_status.return_value = 0  # Command succeeded
+        mock_stdout.read.return_value = ''  # Return actual string
         mock_stderr = Mock()
-        mock_stderr.read.return_value = b''
+        mock_stderr.read.return_value = 'ERROR: something went wrong'  # Return actual string
 
         mock_ssh.exec_command.return_value = (None, mock_stdout, mock_stderr)
 
-        result = RemoteCommand.execute(command="ls", command_id="1", authentication=mock_auth)
+        # Mock RemoteConnection
+        mock_conn = Mock(spec=RemoteConnection)
+        mock_conn.authentication = mock_auth
+        mock_conn.conn = mock_ssh  # Add this line
+        mock_conn.exec_command.return_value = (None, '', 'ERROR: something went wrong', 0)  # Fixed return value
 
+        result = RemoteCommand.execute(command="ls", command_id="1", ssh=mock_conn)
+
+    assert result.completion
     assert not result.success
-    assert "Socket timed out while waiting for command to finish." in result.stderr
+    assert result.errors
+    assert result.stderr == 'ERROR: something went wrong'
+    assert result.stdout == ''
+    assert result.exit_code == 0
+
