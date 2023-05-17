@@ -24,10 +24,10 @@ class RemoteDirActions(Basic):
         Returns:
             bool: True if the source_dir exists, False otherwise.
         """
-        command = f'if [ -e "{directory}" ]; then exit 0; else exit 1; fi'
+        command = f'if [ -e "{directory}" ]; then echo 0; else echo 1; fi'
         results = RemoteCommand.execute(command=command, command_id='directory_exists', ssh=ssh)
         if results.completion:
-            if results.success:
+            if results.stdout == "0":
                 return Basic.bpass(f"Directory '{directory}' exists.")
             elif results.errors:
                 raise RemoteExecuteException(f"Directory '{directory}' existence could not be verified. {results}")
