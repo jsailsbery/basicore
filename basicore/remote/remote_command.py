@@ -1,9 +1,9 @@
 import time
+import json
 import socket
 import logging
 import paramiko
 from scp import SCPClient
-from typing import Any, Tuple
 from dataclasses import dataclass
 from basicore.parameters.config_ssh import SSHConfig
 
@@ -35,19 +35,21 @@ class RemoteResults:
     stderr (str): The standard error from the command. Initialized as an empty string.
     exit_code (int): The exit status of the command. Initialized as -1.
     errors (bool): Whether any errors were detected in the stdout or stderr. Initialized as False.
-    success (bool): Whether the command was executed successfully. Initialized as False.
+    success (bool): Whether the command was executed successfully (no errors, graceful exit). Initialized as False.
     completion (bool): Whether the command has completed execution. Initialized as False.
+    stdin (str): The standard input for the command. Initialized as an empty string.
     """
     command: str
     command_id: str
+    stdin: str = ""
     stdout: str = ""
     stderr: str = ""
     exit_code: int = -1
-    errors: bool = False
-    success: bool = False
     completion: bool = False
+    success: bool = False
+    errors: bool = False
 
-    def __init__(self, command: str = "", command_id: str = ""):
+    def __init__(self, **kwargs):
         """
         Initialize a RemoteResults instance.
 
@@ -55,52 +57,44 @@ class RemoteResults:
         command (str): The command that was executed. Defaults to an empty string.
         command_id (str): An identifier for the command. Defaults to an empty string.
         """
-        self.command = command
-        self.command_id = command_id
+        self.__dict__.update(**kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Generate a string representation of the RemoteResults instance.
 
         Returns:
         str: A string representation of the RemoteResults instance.
         """
-        repr_string = (
-            f"RemoteResults(\n"
-            f"\tcommand_id: {self.command_id},\n"
-            f"\tcommand: {self.command},\n"
-            f"\tstdout: {self.stdout},\n"
-            f"\tstderr: {self.stderr},\n"
-            f"\texit_code: {self.exit_code},\n"
-            f"\terrors: {self.errors},\n"
-            f"\tsuccess: {self.success},\n"
-            f"\tcompletion: {self.completion}\n"
-            ")"
-        )
-        return repr_string
+        return f"RemoteResults({json.dumps(self.__dict__)})"
 
-    def determine_errors(self):
+    def add_to_stderr(self, msg: str = "") -> None:
         """
-        Check the stdout and stderr for errors.
+        Append a message to the standard error output.
 
-        If the word "ERROR" is found in the stdout or stderr (case-insensitive), the errors attribute is set to True.
+        Args:
+        msg (str): The message to append. Defaults to an empty string.
         """
-        if "ERROR" in self.stdout.upper():
-            logger.info(f"Command failure in stdout: {self}")
-            self.errors = True
-        elif "ERROR" in self.stderr.upper():
-            logger.info(f"Command failure in stderr: {self}")
-            self.errors = True
+        self.stderr = f"{self.stderr}\n >{msg}" if self.stderr else msg
 
-    def determine_success(self):
+    def determine_states(self, completion: bool = False) -> None:
         """
+        Check the stdout and stderr for errors and update the status attributes.
+
         Set the success attribute based on the errors attribute and the exit code.
-
         If the errors attribute is True or the exit code is not zero, the success attribute is set to False.
         Otherwise, the success attribute is set to True.
+
+        Args:
+        completion (bool): Whether the command has completed execution. Defaults to False.
         """
-        self.determine_errors()
-        if self.errors or self.exit_code != 0:
+        self.completion = completion
+
+        self.errors = "ERROR" in self.stdout.upper() or "ERROR" in self.stderr.upper()
+        if self.errors:
+            logger.info(f"Command failure detected: {self}")
+
+        if self.errors or not self.completion or self.exit_code != 0:
             logger.info(f"Command exited with error status: {self}")
             self.success = False
         else:
@@ -113,13 +107,11 @@ class RemoteConnection:
     A class to establish and manage a connection to a remote server using SSH.
 
     Attributes:
-    conn (paramiko.SSHClient): The SSH client. Initialized as None.
+    client (Optional[paramiko.SSHClient]): The SSH client. Initialized as None.
     authentication (SSHConfig): The SSH authentication configuration.
     """
-
-    conn: paramiko.SSHClient = None
+    client: paramiko.SSHClient = None
     authentication: SSHConfig = None
-    error_message: str = ""
 
     def __init__(self, authentication: SSHConfig):
         """
@@ -131,116 +123,96 @@ class RemoteConnection:
         self.authentication = authentication
         self.connect()
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Clean up when the RemoteConnection instance is being destroyed.
-
-        If the conn attribute is not None, the SSH connection is closed.
+        If the client attribute is not None, the SSH connection is closed.
         """
-        if self.conn is not None:
-            self.conn.close()
+        if self.client is not None:
+            self.client.close()
 
-    def _set_error(self, msg: str):
-        self.error_message = msg
-        logger.error(msg)
-
-    def connect(self) -> bool:
+    def connect(self) -> str:
         """
         Connect to the remote server using SSH.
+
+        Returns:
+        str: Returns an error message string if any error occurred, else returns an empty string.
         """
         try:
-            if self.conn is None:
-                self.conn = paramiko.SSHClient()
-                self.conn.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                self.conn.connect(
+            if self.client is None:
+                self.client = paramiko.SSHClient()
+                self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                self.client.connect(
                     self.authentication.remote_server,
                     port=self.authentication.ssh_port,
                     username=self.authentication.ssh_user,
                     password=self.authentication.ssh_pswd
                 )
-                return True
-        except paramiko.AuthenticationException:
-            self.conn = None
-            self._set_error(f"ERROR: Failed to log in to remote server. {self.authentication}")
-        return False
-
-    def exec_command(self, command: str, bufsize: int = -1, timeout: int = None, get_pty: bool = False,
-                     environment: dict = None) -> Tuple[Any, str, str, int]:
-        """
-        Execute a command on the remote server.
-
-        Args:
-        command (str): The command to execute.
-        bufsize (int, optional): The buffer size. Defaults to -1.
-        timeout (int, optional): The timeout for the command in seconds. Defaults to None.
-        get_pty (bool, optional): Whether to get a pseudo-terminal for the command. Defaults to False.
-        environment (dict, optional): The environment variables for the command. Defaults to None.
-
-        Returns:
-        Tuple[Any, str, str, int]: A tuple containing the standard input, standard output, standard error, and exit status of the command.
-        """
-        stdin, stdout, stderr, exit_status = ["", "", "", -1]
-        if not self.connect():
-            return stdin, stdout, self.error_message, exit_status
-
-        try:
-            # Connect to remote server using SSH and Execute command
-            stdin, stdout, stderr = self.conn.exec_command(command=command, bufsize=bufsize, timeout=timeout,
-                                                           get_pty=get_pty, environment=environment)
-
-            # Wait for command to finish and capture its exit status
-            exit_status = -1
-            while exit_status == -1:
-                if not stdout.channel.exit_status_ready():
-                    time.sleep(20)  # Wait 20 sec before checking again
-                else:
-                    exit_status = stdout.channel.recv_exit_status()
-
-            stdout = stdout.read().decode().strip()
-            stderr = stderr.read().decode().strip()
-
-        except paramiko.SSHException as e:
-            self._set_error(f"ERROR: SSH error while waiting for command to finish: {str(e)}")
-        except socket.timeout as e:
-            self._set_error(f"ERROR: Socket timed out while waiting for command to finish. {str(e)}")
-        except socket.error as e:
-            self._set_error(f"ERROR: Socket error while waiting for command to finish: {str(e)}")
-
-        stderr = stderr+"\n >"+self.error_message if stderr else self.error_message
-        return stdin, stdout, stderr, exit_status
+        except paramiko.AuthenticationException as e:
+            self.client = None
+            return f"ERROR: Failed to log in to remote server. {self.authentication}. {str(e)}"
+        return ""
 
 
 class RemoteCommand:
     """
     A class providing utility methods to execute commands and transfer files on a remote server via SSH.
     """
-
     @classmethod
-    def execute(cls, command: str, command_id: str, ssh: RemoteConnection) -> RemoteResults:
+    def execute(cls, command: str, command_id: str, ssh: RemoteConnection, bufsize: int = -1,
+                timeout: int = None, get_pty: bool = False, environment: dict = None) -> RemoteResults:
         """
-        Execute a command on a remote server and return the results.
+        Execute a command on the remote server.
 
         Args:
-            command (str): The command to be executed on the remote server.
-            command_id (str): An identifier for the command.
-            ssh (RemoteConnection): The SSH connection to the remote server.
+        command (str): The command to be executed on the remote server.
+        command_id (str): An identifier for the command.
+        ssh (RemoteConnection): The SSH connection to the remote server.
+        bufsize (int, optional): The buffer size. Defaults to -1.
+        timeout (int, optional): The timeout for the command in seconds. Defaults to None.
+        get_pty (bool, optional): Whether to get a pseudo-terminal for the command. Defaults to False.
+        environment (dict, optional): The environment variables for the command. Defaults to None.
 
         Returns:
-            RemoteResults: An object containing the results of the executed command including standard output,
-                           standard error, exit status, success status, and completion status.
+        RemoteResults: An instance of RemoteResults containing the standard input, standard output, standard error, and
+        exit status of the command.
         """
-        # Execute the command
-        stdin, stdout, stderr, exit_code = ssh.exec_command(command)
+        results = RemoteResults(command=command, command_id=command_id)
+        if (emsg := ssh.connect()) != "":
+            results.add_to_stderr(emsg)
+            results.determine_states(completion=False)
+            return results
 
-        # Prepare the command results
-        res = RemoteResults(command=command, command_id=command_id)
-        res.stdout = stdout
-        res.stderr = stderr
-        res.exit_code = exit_code
-        res.completion = True
+        try:
+            # Connect to remote server using SSH and Execute command
+            stdin, stdout, stderr = ssh.client.exec_command(command=command, bufsize=bufsize, timeout=timeout,
+                                                            get_pty=get_pty, environment=environment)
 
-        res.determine_success()
-        return res
+            # Wait for command to finish and capture its exit status
+            results.exit_code = -1
+            while results.exit_code == -1:
+                if not stdout.channel.exit_status_ready():
+                    time.sleep(20)  # Wait 20 sec before checking again
+                else:
+                    results.exit_code = stdout.channel.recv_exit_status()
+
+            # set in cli results
+            results.stdin = stdin.read().decode().strip() if stdin else ""
+            results.stdout = stdout.read().decode().strip() if stdout else ""
+            results.stderr = stderr.read().decode().strip() if stderr else ""
+            results.determine_states(completion=True)
+
+        except paramiko.SSHException as e:
+            results.add_to_stderr(f"ERROR: SSH error while waiting for command to finish: {str(e)}")
+            results.determine_states(completion=False)
+        except socket.timeout as e:
+            results.add_to_stderr(f"ERROR: Socket timed out while waiting for command to finish. {str(e)}")
+            results.determine_states(completion=False)
+        except socket.error as e:
+            results.add_to_stderr(f"ERROR: Socket error while waiting for command to finish: {str(e)}")
+            results.determine_states(completion=False)
+
+        return results
 
     @classmethod
     def scp(cls, source: str, destination: str, ssh: RemoteConnection, put: bool = True) -> RemoteResults:
@@ -248,42 +220,46 @@ class RemoteCommand:
         Securely copies a file or directory from the source to the destination using SCP.
 
         Args:
-            source (str): The path to the source file or directory.
-            destination (str): The path to the destination file or directory.
-            ssh (RemoteConnection): The SSH connection to the remote server.
-            put (bool, optional): If True, the source is the local path and the destination is the remote path (uploading).
-                                  If False, the source is the remote path and the destination is the local path (downloading).
-                                  Default is True (uploading).
+        source (str): The path to the source file or directory.
+        destination (str): The path to the destination file or directory.
+        ssh (RemoteConnection): The SSH connection to the remote server.
+        put (bool, optional): If True, the source is the local path and the destination is the remote path (uploading).
+                              If False, the source is the remote path and the destination is the local path (downloading).
+                              Defaults to True (uploading).
 
         Returns:
-            RemoteResults: A RemoteResults object containing the results of the SCP operation, including the success status,
-                           the command that was executed, the identifier for the command, and any output or error messages.
+        RemoteResults: A RemoteResults object containing the results of the SCP operation, including the success status,
+                       the command that was executed, the identifier for the command, and any output or error messages.
         """
+        command = f"scp {source} {destination}"
         command_id = "scp_put" if put else "scp_get"
-        res = RemoteResults(command=f"scp {source} {destination}", command_id=command_id)
+        results = RemoteResults(command=command, command_id=command_id)
+
+        if (emsg := ssh.connect()) != "":
+            results.add_to_stderr(emsg)
+            results.determine_states(completion=False)
+            return results
 
         try:
             # Perform SCP operation
-            with SCPClient(ssh.conn.get_transport()) as scp:
+            with SCPClient(ssh.client.get_transport()) as scp:
                 if put:
                     scp.put(source, destination, recursive=False)
                 else:
                     scp.get(source, destination, recursive=False)
 
-                res.exit_code = 0
-                res.completion = True
+                # set in cli results
+                results.exit_code = 0
+                results.determine_states(completion=True)
 
         except paramiko.SSHException as e:
-            res.stderr = f"ERROR: SSH error while waiting for command to finish: {str(e)}"
-            logger.error(res.stderr)
+            results.add_to_stderr(f"ERROR: SSH error while waiting for command to finish: {str(e)}")
+            results.determine_states(completion=False)
         except socket.timeout as e:
-            res.stderr = f"ERROR: Socket timed out while waiting for command to finish. {str(e)}"
-            logger.error(res.stderr)
+            results.add_to_stderr(f"ERROR: Socket timed out while waiting for command to finish. {str(e)}")
+            results.determine_states(completion=False)
         except socket.error as e:
-            res.stderr = f"ERROR: Socket error while waiting for command to finish: {str(e)}"
-            logger.error(res.stderr)
+            results.add_to_stderr(f"ERROR: Socket error while waiting for command to finish: {str(e)}")
+            results.determine_states(completion=False)
 
-        if ssh.conn is None:
-            res.stderr = f"ERROR: Failed to log in to remote server. {ssh.authentication}"
-        res.determine_success()
-        return res
+        return results
