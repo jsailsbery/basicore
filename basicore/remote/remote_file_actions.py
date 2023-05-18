@@ -27,17 +27,14 @@ class RemoteFileActions:
         Returns:
             bool: True if the file exists, False otherwise.
         """
-        command = f'if [ -e "{filepath}" ]; then exit 0; else exit 1; fi'
+        command = f'if [ -e "{filepath}" ]; then echo 0; else echo 1; fi'
         results = RemoteCommand.execute(command=command, command_id='file_exists', ssh=ssh)
-        if results.completion:
-            if results.success:
-                return Basic.bpass(f"File '{filepath}' exists.")
-            elif results.errors:
-                raise RemoteExecuteException(f"File '{filepath}' existence could not be verified. {results}")
-            else:
-                return Basic.bfail(f"File '{filepath}' does not exist.")
-        else:
-            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+        if not results.success:
+            raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
+
+        if results.stdout == "0":
+            return Basic.bpass(f"File '{filepath}' exists.")
+        return Basic.bfail(f"File '{filepath}' does not exist.")
 
     @classmethod
     def isfile(cls, filepath: str, ssh: RemoteConnection) -> bool:
@@ -54,17 +51,14 @@ class RemoteFileActions:
         if not RemoteFileActions.exists(filepath=filepath, ssh=ssh):
             return False
 
-        command = f'if [ -f "{filepath}" ]; then exit 0; else exit 1; fi'
+        command = f'if [ -f "{filepath}" ]; then echo 0; else echo 1; fi'
         results = RemoteCommand.execute(command=command, command_id='isfile', ssh=ssh)
-        if results.completion:
-            if results.success:
-                return Basic.bpass(f"File '{filepath}' is a file.")
-            elif results.errors:
-                raise RemoteExecuteException(f"File '{filepath}' type could not be verified. {results}")
-            else:
-                return Basic.bfail(f"File '{filepath}' is not a file.")
-        else:
-            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+        if not results.success:
+            raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
+
+        if results.stdout == "0":
+            return Basic.bpass(f"File '{filepath}' is a file.")
+        return Basic.bfail(f"File '{filepath}' is not a file.")
 
     @classmethod
     def remove(cls, filepath: str, ssh: RemoteConnection) -> bool:
@@ -83,15 +77,14 @@ class RemoteFileActions:
 
         command = f'rm -f {filepath}'
         results = RemoteCommand.execute(command=command, command_id='remove_file', ssh=ssh)
-        if results.completion:
-            if results.success:
-                return Basic.bpass(f"File '{filepath}' removed.")
-            elif results.errors:
-                raise RemoteExecuteException(f"File '{filepath}' removal not confirmed. Errors in execution. {results}")
-            else:
-                return Basic.bfail(f"Did not complete removing file '{filepath}'.")
-        else:
-            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+        if not results.success:
+            logger.warning(f"Error executing remote command: \n>'{command}'\n >{results}")
+            if not results.completion:
+                raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+
+        if results.success:
+            return Basic.bpass(f"File '{filepath}' removed.")
+        return Basic.bfail(f"Did not complete removing file '{filepath}'.")
 
     @classmethod
     def read(cls, filepath: str, ssh: RemoteConnection) -> Union[str, list, dict]:
@@ -112,17 +105,18 @@ class RemoteFileActions:
 
         command = f'cat {filepath}'
         results = RemoteCommand.execute(command=command, command_id='read_file', ssh=ssh)
-        if results.completion:
-            if results.success:
-                content = results.stdout
-                try:
-                    return json.loads(content)  # Try parsing as JSON dict or list
-                except json.JSONDecodeError:
-                    return content  # Return as plain text if parsing fails
-            else:
-                return Basic.sfail(f"Failed to read {filepath}.")
-        else:
-            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+        if not results.success:
+            logger.warning(f"Error executing remote command: \n>'{command}'\n >{results}")
+            if not results.completion:
+                raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+
+        if results.success:
+            content = results.stdout
+            try:
+                return json.loads(content)  # Try parsing as JSON dict or list
+            except json.JSONDecodeError:
+                return content  # Return as plain text if parsing fails
+        return Basic.sfail(f"Failed to read {filepath}.")
 
     @classmethod
     def write(cls, filepath: str, data: Union[str, list, dict], ssh: RemoteConnection, mode: str = "w") -> bool:
@@ -184,12 +178,11 @@ class RemoteFileActions:
 
         command = f'readlink -f "{symlink_target_path}"'
         results = RemoteCommand.execute(command=command, command_id='follow_symlink', ssh=ssh)
-        if results.completion:
-            if results.success:
-                return Basic.spass(results.stdout.strip(), f"Symlink: '{symlink_target_path}' target: {results.stdout}.")
-            elif results.errors:
-                raise RemoteExecuteException(f"Errors occurred trying to follow symlink file {results}")
-            else:
-                return Basic.sfail(f"Could not follow symlink file: '{symlink_target_path}'.")
-        else:
-            raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+        if not results.success:
+            logger.warning(f"Error executing remote command: \n>'{command}'\n >{results}")
+            if not results.completion:
+                raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+
+        if results.success:
+            return Basic.spass(results.stdout, f"Symlink: '{symlink_target_path}' target: {results.stdout}.")
+        return Basic.sfail(f"Could not follow symlink file: '{symlink_target_path}'.")
