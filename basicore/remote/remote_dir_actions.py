@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from basicore.generic import Basic
 from .remote_command import RemoteCommand, RemoteConnection, RemoteExecuteException
 from .remote_file_actions import RemoteFileActions
@@ -212,7 +212,7 @@ class RemoteDirActions(Basic):
 
     @classmethod
     def grep(cls, search_text: str, directory: str, ssh: RemoteConnection, file_size_limit: str = "50M",
-                        exclude_file_ext: list[str] = None, ignore_case:bool = True) -> list:
+             exclude_file_ext: List[str] = None, ignore_case: bool = True) -> List:
         if not RemoteDirActions.exists(directory=directory, ssh=ssh):
             return None
 
