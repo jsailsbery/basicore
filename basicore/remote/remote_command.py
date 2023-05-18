@@ -158,6 +158,9 @@ class RemoteCommand:
     """
     A class providing utility methods to execute commands and transfer files on a remote server via SSH.
     """
+    INIT_WAIT_TIME = 1
+    LOOP_WAIT_TIME = 15
+
     @classmethod
     def execute(cls, command: str, command_id: str, ssh: RemoteConnection, bufsize: int = -1,
                 timeout: int = None, get_pty: bool = False, environment: dict = None) -> RemoteResults:
@@ -187,19 +190,20 @@ class RemoteCommand:
             # Connect to remote server using SSH and Execute command
             stdin, stdout, stderr = ssh.client.exec_command(command=command, bufsize=bufsize, timeout=timeout,
                                                             get_pty=get_pty, environment=environment)
+            time.sleep(RemoteCommand.INIT_WAIT_TIME)
 
             # Wait for command to finish and capture its exit status
             results.exit_code = -1
             while results.exit_code == -1:
                 if not stdout.channel.exit_status_ready():
-                    time.sleep(20)  # Wait 20 sec before checking again
+                    time.sleep(RemoteCommand.LOOP_WAIT_TIME)
                 else:
                     results.exit_code = stdout.channel.recv_exit_status()
 
             # set in cli results
-            results.stdin = stdin.read().decode().strip() if stdin else ""
-            results.stdout = stdout.read().decode().strip() if stdout else ""
-            results.stderr = stderr.read().decode().strip() if stderr else ""
+            #results.stdin = stdin.read().decode().strip() if stdin else ""
+            results.stdout = "\n".join([line.strip() for line in stdout.readlines()]) if stdout else ""
+            results.stderr = "\n".join([line.strip() for line in stdout.readlines()]) if stdout else ""
             results.determine_states(completion=True)
 
         except paramiko.SSHException as e:
