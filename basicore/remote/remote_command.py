@@ -98,7 +98,7 @@ class RemoteResults:
             logger.info(f"Command exited with error status: {self}")
             self.success = False
         else:
-            logger.info(f"{self.command_id}: Command completed successfully.")
+            #logger.info(f"{self.command_id}: Command completed successfully.")
             self.success = True
 
 
@@ -159,7 +159,7 @@ class RemoteCommand:
     A class providing utility methods to execute commands and transfer files on a remote server via SSH.
     """
     INIT_WAIT_TIME = 1
-    LOOP_WAIT_TIME = 15
+    LOOP_WAIT_TIME = 5
 
     @classmethod
     def execute(cls, command: str, command_id: str, ssh: RemoteConnection, bufsize: int = -1,
@@ -193,17 +193,14 @@ class RemoteCommand:
             time.sleep(RemoteCommand.INIT_WAIT_TIME)
 
             # Wait for command to finish and capture its exit status
-            results.exit_code = -1
-            while results.exit_code == -1:
-                if not stdout.channel.exit_status_ready():
-                    time.sleep(RemoteCommand.LOOP_WAIT_TIME)
-                else:
-                    results.exit_code = stdout.channel.recv_exit_status()
+            while not stdout.channel.exit_status_ready():
+                time.sleep(RemoteCommand.LOOP_WAIT_TIME)
 
             # set in cli results
             #results.stdin = stdin.read().decode().strip() if stdin else ""
             results.stdout = "\n".join([line.strip() for line in stdout.readlines()]) if stdout else ""
-            results.stderr = "\n".join([line.strip() for line in stdout.readlines()]) if stdout else ""
+            results.stderr = "\n".join([line.strip() for line in stderr.readlines()]) if stderr else ""
+            results.exit_code = stdout.channel.recv_exit_status()
             results.determine_states(completion=True)
 
         except paramiko.SSHException as e:
