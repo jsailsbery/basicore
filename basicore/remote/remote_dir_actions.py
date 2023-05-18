@@ -209,3 +209,36 @@ class RemoteDirActions(Basic):
         if results.success:
             return Basic.bpass(f"Contents removed from '{directory}' except for specified values.")
         return Basic.bfail(f"Did not complete removing contents of '{directory}'.")
+
+    @classmethod
+    def grep(cls, search_text: str, directory: str, ssh: RemoteConnection, file_size_limit: str = "50M",
+                        exclude_file_ext: list[str] = None, ignore_case:bool = True) -> list:
+        if not RemoteDirActions.exists(directory=directory, ssh=ssh):
+            return None
+
+        # filesize limit
+        file_size_limit = f"-size -{file_size_limit}" if file_size_limit else ""
+
+        # excluded files
+        excluded = ""
+        if exclude_file_ext:
+            names = " -o ".join([f'-name "*.{ext}"' for ext in exclude_file_ext])
+            excluded = f"! \( {names} \)"
+
+        # grep command
+        i = "-i" if ignore_case else ""
+        grepcmd = f'grep {i} "{search_text}" ' + "{} +"
+
+        # put it all together
+        command = f'find {directory} -type f {file_size_limit} {excluded} -exec {grepcmd}'
+        results = RemoteCommand.execute(command=command, command_id='list_directory', ssh=ssh)
+        if not results.success:
+            logger.warning(f"Error executing remote command: \n>'{command}'\n >{results}")
+            if not results.completion:
+                raise RemoteExecuteException(f"Error executing remote command: '{command}'")
+            return None
+
+        found_lines = []
+        if results.completion and results.exit_code == 0:
+            found_lines = results.stdout.splitlines()
+        return found_lines

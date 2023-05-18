@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import tempfile
-from typing import Union
+from typing import Unionq
 
 from .remote_command import RemoteCommand, RemoteConnection, RemoteExecuteException
 from basicore.parameters import SSHConfig
@@ -35,6 +35,30 @@ class RemoteFileActions:
         if results.stdout == "0":
             return Basic.bpass(f"File '{filepath}' exists.")
         return Basic.bfail(f"File '{filepath}' does not exist.")
+
+    @classmethod
+    def exists_many(cls, filepath_list: list[str], ssh: RemoteConnection) -> dict[bool]:
+        """
+        Determines if the file at the specified filepath exists.
+
+        Parameters:
+            filepath_list (str): The paths of the files to check.
+            ssh (RemoteConnection): The SSH connection to the remote server.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
+        command = f'for f in {" ".join(filepath_list)}; do if [ -f "$f" ]; then echo "$f > 1"; ' \
+                  f'else echo "$f > 2"; fi; done'
+        results = RemoteCommand.execute(command=command, command_id='filelist_exists', ssh=ssh)
+        if not results.success:
+            raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
+
+        file_exists = {}
+        for line in results.stdout.splitlines():
+            filename, flag = line.split(" > ")
+            file_exists[filename] = True if flag == "1" else False
+        return file_exists
 
     @classmethod
     def isfile(cls, filepath: str, ssh: RemoteConnection) -> bool:

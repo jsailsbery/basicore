@@ -89,7 +89,7 @@ class FileActions:
         """
         p = Path(filepath)
         if not p.exists():
-            p.mkdir(parents=True, exist_ok=True)
+            p.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             if isinstance(data, (list, dict)):
