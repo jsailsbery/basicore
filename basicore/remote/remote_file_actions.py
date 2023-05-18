@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import tempfile
-from typing import Unionq
+from typing import Union
 
 from .remote_command import RemoteCommand, RemoteConnection, RemoteExecuteException
 from basicore.parameters import SSHConfig
