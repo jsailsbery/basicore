@@ -20,16 +20,19 @@ def mock_ssh():
             mock_ssh = MockSSHClient.return_value
 
             mock_stdin, mock_stdin_read = [Mock(), Mock()]
-            mock_stdin_read.decode.return_value = ''
-            mock_stdin.read.return_value = mock_stdin_read
+            #mock_stdin_read.decode.return_value = ''
+            #mock_stdin.read.return_value = mock_stdin_read
+            mock_stdin.readlines.return_value = ''
 
             mock_stdout, mock_stdout_read = [Mock(), Mock()]
-            mock_stdout_read.decode.return_value = stdout
-            mock_stdout.read.return_value = mock_stdout_read
+            #mock_stdout_read.decode.return_value = stdout
+            #mock_stdout.read.return_value = mock_stdout_read
+            mock_stdout.readlines.return_value = [stdout]
 
             mock_stderr, mock_stderr_read = [Mock(), Mock()]
-            mock_stderr_read.decode.return_value = stderr
-            mock_stderr.read.return_value = mock_stderr_read
+            #mock_stderr_read.decode.return_value = stderr
+            #mock_stderr.read.return_value = mock_stderr_read
+            mock_stderr.readlines.return_value = [stderr]
 
             mock_stdout.channel.recv_exit_status.return_value = exit_code  # Command succeeded
             mock_ssh.exec_command.return_value = (mock_stdin, mock_stdout, mock_stderr)
