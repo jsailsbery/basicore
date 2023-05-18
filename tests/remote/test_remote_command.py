@@ -1,4 +1,5 @@
 import pytest
+import tempfile
 import paramiko
 from unittest.mock import patch, Mock
 from basicore.parameters import SSHConfig
