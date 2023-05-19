@@ -34,7 +34,7 @@ class RemoteDirActions(Basic):
         return Basic.bfail(f"Directory '{directory}' does not exist.")
 
     @classmethod
-    def exists_many(cls, directories: list[str], ssh: RemoteConnection) -> dict[bool]:
+    def exists_many(cls, directories: list[str], ssh: RemoteConnection) -> dict[str, bool]:
         """
         Determines if the file at the specified filepath exists.
 
