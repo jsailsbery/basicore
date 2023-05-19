@@ -37,7 +37,7 @@ class RemoteFileActions:
         return Basic.bfail(f"File '{filepath}' does not exist.")
 
     @classmethod
-    def exists_many(cls, filepath_list: list[str], ssh: RemoteConnection) -> dict[bool]:
+    def exists_many(cls, filepath_list: list[str], ssh: RemoteConnection) -> dict[str, bool]:
         """
         Determines if the file at the specified filepath exists.
 
