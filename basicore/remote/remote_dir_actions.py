@@ -34,6 +34,30 @@ class RemoteDirActions(Basic):
         return Basic.bfail(f"Directory '{directory}' does not exist.")
 
     @classmethod
+    def exists_many(cls, directories: list[str], ssh: RemoteConnection) -> dict[bool]:
+        """
+        Determines if the file at the specified filepath exists.
+
+        Parameters:
+            directories (str): The paths of the files to check.
+            ssh (RemoteConnection): The SSH connection to the remote server.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
+        command = f'for f in {" ".join(directories)}; do if [ -d "$f" ]; then echo "$f > 1"; ' \
+                  f'else echo "$f > 2"; fi; done'
+        results = RemoteCommand.execute(command=command, command_id='dirlist_exists', ssh=ssh)
+        if not results.success:
+            raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
+
+        dir_exists = {}
+        for line in results.stdout.splitlines():
+            dirname, flag = line.split(" > ")
+            dir_exists[dirname] = True if flag == "1" else False
+        return dir_exists
+
+    @classmethod
     def isdir(cls, directory: str, ssh: RemoteConnection) -> bool:
         """Check if a directory path.
 
