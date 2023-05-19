@@ -33,8 +33,8 @@ class RemoteFileActions:
             raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
 
         if results.stdout == "0":
-            return Basic.bpass(f"File '{filepath}' exists.")
-        return Basic.bfail(f"File '{filepath}' does not exist.")
+            return True #Basic.bpass(f"File '{filepath}' exists.")
+        return False #Basic.bfail(f"File '{filepath}' does not exist.")
 
     @classmethod
     def exists_many(cls, filepath_list: list[str], ssh: RemoteConnection) -> dict[str, bool]:
@@ -81,8 +81,8 @@ class RemoteFileActions:
             raise RemoteExecuteException(f"Error executing remote command: \n>'{command}'\n >{results}")
 
         if results.stdout == "0":
-            return Basic.bpass(f"File '{filepath}' is a file.")
-        return Basic.bfail(f"File '{filepath}' is not a file.")
+            return True #Basic.bpass(f"File '{filepath}' is a file.")
+        return False #Basic.bfail(f"File '{filepath}' is not a file.")
 
     @classmethod
     def remove(cls, filepath: str, ssh: RemoteConnection) -> bool:
